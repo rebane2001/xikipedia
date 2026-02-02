@@ -443,7 +443,7 @@ async function* streamToAsyncIterable(stream) {
         const bytes = new Uint8Array(DATA_SIZE);
         for await (const chunk of streamToAsyncIterable(resp.body)) {
             if (Math.floor(responseSize/DATA_SIZE*100) < Math.floor((responseSize+chunk.length)/DATA_SIZE*100))
-                startBtn.innerText = `Xikipedia is loading... (${Math.floor(responseSize/DATA_SIZE*100)}% of 40MB loaded)`;
+                startBtn.innerText = `Xikipedia is loading...<br />(${Math.floor(responseSize/DATA_SIZE*100)}% of 40MB loaded)`;
             bytes.set(chunk, responseSize);
             responseSize += chunk.length;
         }
