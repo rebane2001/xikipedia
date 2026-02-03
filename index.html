@@ -339,13 +339,38 @@
         postP.innerText = nextPost.text;
         postYes.innerText = "Like";
         postYes.onclick = (e) => {
-            postYes.dataset.liked = true;
-            if (!postYes.dataset.engaged)
-                postYes.dataset.engaged = engagePost(nextPost, 50 + postsWithoutLike*4);
-            postsWithoutLike = 0;
-            setTimeout(updateEngagement,100); 
             e.stopPropagation();
+
+            // Initialize tracking
+            if (!nextPost.likeEngagement)
+                nextPost.likeEngagement = 0;
+
+            if (postYes.dataset.liked) {
+                // UNLIKE
+                delete postYes.dataset.liked;
+
+                // Remove whatever engagement the like previously added
+                engagePost(nextPost, -nextPost.likeEngagement);
+                nextPost.likeEngagement = 0;
+
+                // Optionally treat this as a non-liked post for the future
+                postsWithoutLike++;
+            } else {
+                // LIKE
+                postYes.dataset.liked = true;
+
+                const likeAmount = 50 + postsWithoutLike * 4;
+
+                // Adjust by the delta so changes to formula stay consistent
+                engagePost(nextPost, likeAmount - nextPost.likeEngagement);
+                nextPost.likeEngagement = likeAmount;
+
+                postsWithoutLike = 0;
+            }
+
+            setTimeout(updateEngagement, 100);
         };
+
         postDiv.appendChild(postTitle);
         postDiv.appendChild(postP);
         if (nextPost.thumb) {
