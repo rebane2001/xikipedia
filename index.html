@@ -50,6 +50,88 @@
             justify-content: center;
             margin: 0;
         }
+
+        .posts.mode-tinder,
+        .posts.mode-tiktok {
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+            max-width: 600px;
+            margin-bottom: 0 !important;
+        }
+
+        .posts.mode-tiktok {
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            -ms-overflow-style: none;
+            /* IE and Edge */
+            scrollbar-width: none;
+            /* Firefox */
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+        }
+
+        .posts.mode-tiktok .post {
+            height: 100vh;
+            scroll-snap-align: start;
+            box-sizing: border-box;
+            justify-content: center;
+        }
+
+        .posts.mode-tiktok::-webkit-scrollbar {
+            display: none;
+        }
+
+        .posts.mode-tinder .post {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg);
+            z-index: 2;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            touch-action: none;
+        }
+
+        .swipe-right {
+            transform: translateX(200%) rotate(30deg);
+            opacity: 0;
+        }
+
+        .swipe-left {
+            transform: translateX(-200%) rotate(-30deg);
+            opacity: 0;
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 80px;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+        }
+
+        .swipe-indicator.visible {
+            transform: translate(-50%, -50%) scale(1.2);
+            opacity: 1;
+        }
+
+        .indicator-heart {
+            color: #ff4b4b;
+            text-shadow: 0 0 20px rgba(255, 75, 75, 0.4);
+        }
+
+        .indicator-cross {
+            color: #8899a6;
+            text-shadow: 0 0 20px rgba(136, 153, 166, 0.4);
+        }
+
         .posts {
             max-width: 600px;
             width: 100vw;
@@ -604,6 +686,13 @@
             <label><input type="radio" name="theme" id="theme-light">Light</label>
             <label><input type="radio" name="theme" id="theme-dark">Dark</label>
         </radio-picker>
+        <pseudo-label>Display mode
+        <radio-picker aria-label="View mode" role="radiogroup">
+            <label><input type="radio" name="viewMode" id="mode-classic" checked>Scroll</label>
+            <label><input type="radio" name="viewMode" id="mode-tinder">Swipe</label>
+            <label><input type="radio" name="viewMode" id="mode-tiktok">Scroll(full page post)</label>
+        </radio-picker>
+        </pseudo-label>
         </pseudo-label>
         <div style="flex:1"></div>
         <button class="btn-outline" onclick=showAboutModal() style="margin-bottom:8px">About Xikipedia</button>
@@ -687,7 +776,7 @@
     const defaultCategories = ["nature", "science", "animals", "anthropology", "places", "sociology", "art", "mathematics", "games", "technology", "music", "human sexuality"];
     let postsWithoutLike = 0;
 
-    const HTML_VERSION = "1.1.4";
+    const HTML_VERSION = "1.1.5";
 
     function loadSettings() {
         const baseSettings = {
@@ -697,6 +786,7 @@
             profile: "default",
             profiles: ["default"],
             theme: "theme-auto",
+            viewMode: "mode-classic"
         };
         const loadedSettings = JSON.parse(localStorage.getItem("xikipedia-settings") ?? '{}');
         const computedSettings = Object.assign(baseSettings, loadedSettings);
@@ -710,7 +800,14 @@
         settings.theme = document.querySelector('[name=theme]:checked')?.id ?? "theme-auto";
         settings.storeData = document.getElementById("setting-storeData").checked;
         settings.openMainWiki = document.getElementById("setting-openMainWiki").checked;
+        settings.viewMode = document.querySelector('[name=viewMode]:checked')?.id ?? "mode-classic";
         localStorage.setItem("xikipedia-settings", JSON.stringify(settings));
+        applyViewMode();
+    }
+
+    function applyViewMode() {
+        const container = document.querySelector(".posts");
+        container.className = "posts " + settings.viewMode;
     }
 
     function resetAlgorithm() {
@@ -1029,6 +1126,7 @@
         const postTitle = document.createElement("h1");
         const postP = document.createElement("p");
         const postYes = document.createElement("button");
+        postDiv.dataset.id = nextPost.id;
         postDiv.classList.add("post");
         postDiv.onclick = () => {
             window.open(getArticleLink(nextPost.title));
@@ -1069,6 +1167,41 @@
         //nextPost.allCategories.forEach(e => categoryScores[e] -= 1);
         engagePost(nextPost, -5);
         postsWithoutLike++;
+
+        if (settings.viewMode === "mode-tinder") {
+            let startX = 0;
+
+            postDiv.addEventListener('touchstart', e => startX = e.touches[0].clientX);
+            postDiv.addEventListener('touchmove', e => {
+                let moveX = e.touches[0].clientX - startX;
+                postDiv.style.transform = `translateX(${moveX}px) rotate(${moveX / 10}deg)`;
+            });
+
+            postDiv.addEventListener('touchend', e => {
+                let diffX = e.changedTouches[0].clientX - startX;
+                if (Math.abs(diffX) > 100) {
+                    postDiv.style.pointerEvents = "none";
+
+                    const parent = document.querySelector(".posts.mode-tinder");
+                    if (diffX > 0) {
+                        showSwipeIndicator('like', parent);
+                        postDiv.classList.add('swipe-right');
+                        likedPosts.push(nextPost.id);
+                        engagePost(nextPost, 50);
+                    } else {
+                        showSwipeIndicator('dislike', parent);
+                        postDiv.classList.add('swipe-left');
+                        engagePost(nextPost, -25);
+                    }
+
+                    setTimeout(() => {
+                        postDiv.remove();
+                    }, 300);
+                } else {
+                    postDiv.style.transform = "";
+                }
+            });
+        }
         document.querySelector(".posts").appendChild(postDiv);
     }
 
@@ -1112,8 +1245,23 @@
     }
 
     function render() {
-        if (document.documentElement.scrollHeight < scrollY+innerHeight + 1500)
-            createNextPost();
+        const container = document.querySelector(".posts");
+        if (!container) return;
+
+        if (settings.viewMode === "mode-classic") {
+            if (document.documentElement.scrollHeight < scrollY + innerHeight + 1500) {
+                createNextPost();
+            }
+        } else if (settings.viewMode === "mode-tinder") {
+            const activePosts = container.querySelectorAll('.post:not(.swipe-right):not(.swipe-left)');
+            if (activePosts.length < 2) {
+                createNextPost();
+            }
+        } else if (settings.viewMode === "mode-tiktok") {
+            if (container.scrollHeight - container.scrollTop <= container.clientHeight + 500) {
+                createNextPost();
+            }
+        }
         requestAnimationFrame(render);
     }
 
@@ -1200,6 +1348,42 @@ async function* streamToAsyncIterable(stream) {
         if (loading)
             loading.innerText = `Loading...\n(${text})`;
     }
+
+    function showSwipeIndicator(type, parent) {
+        const indicator = document.createElement("div");
+        indicator.className = `swipe-indicator ${type === 'like' ? 'indicator-heart' : 'indicator-cross'}`;
+        indicator.innerHTML = type === 'like' ? '❤️' : '✖️';
+        parent.appendChild(indicator);
+
+        requestAnimationFrame(() => {
+            indicator.classList.add("visible");
+        });
+
+        setTimeout(() => {
+            indicator.classList.remove("visible");
+            setTimeout(() => indicator.remove(), 200);
+        }, 500);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (settings.viewMode !== "mode-tinder") return;
+
+        const topPost = document.querySelector(".posts.mode-tinder .post:last-child");
+        if (!topPost) return;
+        const parent = document.querySelector(".posts.mode-tinder");
+        if (e.key === "ArrowRight") {
+            showSwipeIndicator('like', parent);
+            topPost.classList.add('swipe-right');
+            const postId = topPost.dataset.id;
+            likedPosts.push(postId);
+            topPost.querySelector('button').click();
+            setTimeout(() => topPost.remove(), 300);
+        } else if (e.key === "ArrowLeft") {
+            showSwipeIndicator('dislike', parent);
+            topPost.classList.add('swipe-left');
+            setTimeout(() => topPost.remove(), 300);
+        }
+    });
 
     let downloadFinished = false;
     async function main() {
