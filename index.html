@@ -53,7 +53,7 @@
 
         .posts.mode-tinder,
         .posts.mode-tiktok {
-            height: 100vh;
+            height: calc(100vh - 48px - var(--safe-bottom));
             overflow: hidden;
             position: relative;
             max-width: 600px;
@@ -67,13 +67,13 @@
             /* IE and Edge */
             scrollbar-width: none;
             /* Firefox */
-            height: 100vh;
+            height: calc(100vh - 48px - var(--safe-bottom));
             overflow-y: scroll;
             scroll-snap-type: y mandatory;
         }
 
         .posts.mode-tiktok .post {
-            height: 100vh;
+            height: calc(100vh - 48px - var(--safe-bottom));
             scroll-snap-align: start;
             box-sizing: border-box;
             justify-content: center;
@@ -85,10 +85,13 @@
 
         .posts.mode-tinder .post {
             position: absolute;
+            box-sizing: border-box;
+            justify-content: center;
             top: 0;
             left: 0;
-            width: 100%;
+            right: 0;
             height: 100%;
+            width: 100%;
             background: var(--bg);
             z-index: 2;
             transition: transform 0.3s ease, opacity 0.3s ease;
@@ -317,6 +320,7 @@
             color: var(--theme);
         }
         .bottomNav {
+            z-index: 100;
             display: flex;
             justify-content: space-around;
             position: fixed;
@@ -686,13 +690,13 @@
             <label><input type="radio" name="theme" id="theme-light">Light</label>
             <label><input type="radio" name="theme" id="theme-dark">Dark</label>
         </radio-picker>
+        </pseudo-label>
         <pseudo-label>Display mode
         <radio-picker aria-label="View mode" role="radiogroup">
             <label><input type="radio" name="viewMode" id="mode-classic" checked>Scroll</label>
             <label><input type="radio" name="viewMode" id="mode-tinder">Swipe</label>
             <label><input type="radio" name="viewMode" id="mode-tiktok">Scroll(full page post)</label>
         </radio-picker>
-        </pseudo-label>
         </pseudo-label>
         <div style="flex:1"></div>
         <button class="btn-outline" onclick=showAboutModal() style="margin-bottom:8px">About Xikipedia</button>
@@ -1167,41 +1171,59 @@
         //nextPost.allCategories.forEach(e => categoryScores[e] -= 1);
         engagePost(nextPost, -5);
         postsWithoutLike++;
+        let startX = 0;
+        let isDragging = false;
 
-        if (settings.viewMode === "mode-tinder") {
-            let startX = 0;
+        const start = (x) => {
+            if (settings.viewMode !== "mode-tinder") return;
+            startX = x;
+            isDragging = true;
+            postDiv.style.transition = 'none';
+        };
 
-            postDiv.addEventListener('touchstart', e => startX = e.touches[0].clientX);
-            postDiv.addEventListener('touchmove', e => {
-                let moveX = e.touches[0].clientX - startX;
-                postDiv.style.transform = `translateX(${moveX}px) rotate(${moveX / 10}deg)`;
-            });
+        const move = (x) => {
+            if (!isDragging || settings.viewMode !== "mode-tinder") return;
+            let moveX = x - startX;
+            postDiv.style.transform = `translateX(${moveX}px) rotate(${moveX / 10}deg)`;
+        };
 
-            postDiv.addEventListener('touchend', e => {
-                let diffX = e.changedTouches[0].clientX - startX;
-                if (Math.abs(diffX) > 100) {
-                    postDiv.style.pointerEvents = "none";
+        const end = (x) => {
+            if (!isDragging || settings.viewMode !== "mode-tinder") return;
+            isDragging = false;
+            postDiv.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
 
-                    const parent = document.querySelector(".posts.mode-tinder");
-                    if (diffX > 0) {
-                        showSwipeIndicator('like', parent);
-                        postDiv.classList.add('swipe-right');
-                        likedPosts.push(nextPost.id);
-                        engagePost(nextPost, 50);
-                    } else {
-                        showSwipeIndicator('dislike', parent);
-                        postDiv.classList.add('swipe-left');
-                        engagePost(nextPost, -25);
-                    }
-
-                    setTimeout(() => {
-                        postDiv.remove();
-                    }, 300);
+            let diffX = x - startX;
+            if (Math.abs(diffX) > 100) {
+                postDiv.style.pointerEvents = "none";
+                const parent = document.querySelector(".posts.mode-tinder");
+                if (diffX > 0) {
+                    showSwipeIndicator('like', parent);
+                    postDiv.classList.add('swipe-right');
+                    likedPosts.push(nextPost.id);
+                    engagePost(nextPost, 50);
                 } else {
-                    postDiv.style.transform = "";
+                    showSwipeIndicator('dislike', parent);
+                    postDiv.classList.add('swipe-left');
+                    engagePost(nextPost, -25);
                 }
-            });
-        }
+                setTimeout(() => postDiv.remove(), 300);
+            } else {
+                postDiv.style.transform = "";
+            }
+        };
+
+        postDiv.addEventListener('touchstart', e => start(e.touches[0].clientX));
+        postDiv.addEventListener('touchmove', e => move(e.touches[0].clientX));
+        postDiv.addEventListener('touchend', e => end(e.changedTouches[0].clientX));
+
+        postDiv.addEventListener('mousedown', e => {
+            if(e.button !== 0) return;
+            start(e.clientX);
+        });
+        window.addEventListener('mousemove', e => move(e.clientX));
+        window.addEventListener('mouseup', e => end(e.clientX));
+
+        postDiv.querySelectorAll('img').forEach(img => img.draggable = false);
         document.querySelector(".posts").appendChild(postDiv);
     }
 
@@ -1366,22 +1388,30 @@ async function* streamToAsyncIterable(stream) {
     }
 
     window.addEventListener('keydown', (e) => {
-        if (settings.viewMode !== "mode-tinder") return;
-
-        const topPost = document.querySelector(".posts.mode-tinder .post:last-child");
-        if (!topPost) return;
-        const parent = document.querySelector(".posts.mode-tinder");
-        if (e.key === "ArrowRight") {
-            showSwipeIndicator('like', parent);
-            topPost.classList.add('swipe-right');
-            const postId = topPost.dataset.id;
-            likedPosts.push(postId);
-            topPost.querySelector('button').click();
-            setTimeout(() => topPost.remove(), 300);
-        } else if (e.key === "ArrowLeft") {
-            showSwipeIndicator('dislike', parent);
-            topPost.classList.add('swipe-left');
-            setTimeout(() => topPost.remove(), 300);
+        if (settings.viewMode === "mode-tinder") {
+            const topPost = document.querySelector(".posts.mode-tinder .post:last-child");
+            if (!topPost) return;
+            const parent = document.querySelector(".posts.mode-tinder");
+            if (e.key === "ArrowRight") {
+                showSwipeIndicator('like', parent);
+                topPost.classList.add('swipe-right');
+                likedPosts.push(topPost.dataset.id);
+                topPost.querySelector('button').click();
+                setTimeout(() => topPost.remove(), 300);
+            } else if (e.key === "ArrowLeft") {
+                showSwipeIndicator('dislike', parent);
+                topPost.classList.add('swipe-left');
+                setTimeout(() => topPost.remove(), 300);
+            }
+        } else if (settings.viewMode === "mode-tiktok") {
+            const container = document.querySelector(".posts.mode-tiktok");
+            if (e.key === "ArrowDown") {
+                e.preventDefault(); // Prevent page jitter
+                container.scrollBy({ top: container.clientHeight, behavior: 'smooth' });
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                container.scrollBy({ top: -container.clientHeight, behavior: 'smooth' });
+            }
         }
     });
 
