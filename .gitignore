@@ -1,0 +1,8 @@
+data/*.db
+*.xml.bz2
+*.sql.gz
+*.json.br
+smoldata.json
+node_modules/
+test-results/
+dist/

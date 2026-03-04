@@ -1,0 +1,1109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wikiquiz</title>
+    <meta name="description" content="Wikipedia you can doomscroll">
+    <meta content="#2cafff" name="theme-color" />
+    <style>
+        :root {
+            --bg: light-dark(#FFF, #15202B);
+            --fg: light-dark(#000, #FFF);
+            --border: #38444D;
+            --theme: #2cafff;
+            --safe-bottom: 0px;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+            color-scheme: light dark;
+            @media (prefers-color-scheme: light) {
+                &:has(#theme-auto:checked) {
+                    .bottomNav button::before { filter: invert(100%); }
+                    color-scheme: only light;
+                }
+            }
+            &:has(#theme-light:checked) {
+                .bottomNav button::before { filter: invert(100%); }
+                color-scheme: only light;
+            }
+            @media (prefers-color-scheme: dark) {
+                &:has(#theme-auto:checked) {
+                    color-scheme: only dark;
+                }
+            }
+            &:has(#theme-dark:checked) {
+                color-scheme: only dark;
+            }
+        }
+        html, body {
+            background: var(--bg);
+            color: var(--fg);
+            font-family: system-ui, sans-serif;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            margin: 0;
+        }
+        .posts {
+            max-width: 600px;
+            width: 100vw;
+            outline: 1px solid var(--border);
+            height: fit-content;
+            &:has(.post) {
+                margin-bottom: 1000px;
+            }
+            &:not(:has(.post)) {
+                display: none;
+            }
+        }
+        .post {
+            padding: 12px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            h1 {
+                font-size: 100%;
+                margin: 0;
+            }
+            p {
+                margin: 0;
+                word-break: break-word;
+            }
+            button {
+                align-self: end;
+                margin: -4px;
+                margin-top: 4px;
+                padding: 4px;
+                background: light-dark(#0000, #FFF0);
+                transition: background 0.2s, scale 0.2s cubic-bezier(.15,.67,0,1);
+                border-radius: 64px;
+                &:hover:not([data-liked]) {
+                    background: light-dark(#0002, #FFF2);
+                    scale: 1.1;
+                }
+                &:active:not([data-liked]), &:active {
+                    scale: 0.9;
+                }
+                font-size: 0;
+                border: 0;
+                &::after {
+                    font-size: 16px;
+                    display: block;
+                    width: 24px;
+                    height: 24px;
+                    margin-top: 1px;
+                    margin-bottom: -1px;
+                    content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.06,21.01c3.94,0,13.77-11.36,8.56-16.37-4.59-4.41-8.61,1.58-8.61,1.58,0,0-4.02-5.99-8.61-1.58-5.22,5.01,4.61,16.37,8.56,16.37h.11Z" stroke-width="2" fill="none" stroke="%2389A" stroke-linejoin="round"/></svg>') / "Like";
+                    cursor: pointer;
+                }
+                &[data-liked]::after {
+                    content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m12.06,21.01c3.94,0,13.77-11.36,8.56-16.37-4.59-4.41-8.61,1.58-8.61,1.58,0,0-4.02-5.99-8.61-1.58-5.22,5.01,4.61,16.37,8.56,16.37h.11Z" stroke-width="2" fill="red" stroke="red"/></svg>') / "Like";
+                }
+            }
+            img.media {
+                border-radius: 16px;
+                border: 1px solid var(--border);
+                display:block;
+                margin: 8px 0;
+                max-width: min(512px, 100%);
+                max-height: 330px;
+                background:#FFF;
+            }
+            cursor: pointer;
+            &:hover {
+                background: light-dark(#EEE, #1C2732);
+            }
+        }
+        .fullImg {
+            max-height: 95%;
+            max-width: 95%;
+            min-width: 25%;
+            min-height: 25%;
+        }
+        body ::backdrop {
+            background: #0009;
+        }
+        #startScreen {
+            display: flex;
+            flex-direction: column;
+            background: var(--bg);
+            border:none;
+            width: 90%;
+            height:90%;
+            max-width: 600px;
+            color: var(--fg);
+            border-radius: 8px;
+            padding: 32px;
+            box-sizing: border-box;
+            h1,h2 {
+                margin: 0;
+            }
+        }
+        #categoryPickList {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 8px 0;
+        }
+        .categoryPicker {
+            border-radius: 100px;
+            cursor: pointer;
+            padding: 4px 4px 4px 8px;
+            display:inline-flex;
+            justify-content: space-between;
+            align-items: center;
+            &::after {
+                content: "+";
+                color: var(--theme);
+                font-size: 150%;
+                line-height: 0;
+                margin-left: 8px;
+            }
+            &:hover, &:active { background: light-dark(#0002, #0008); }
+            &:has(input:checked) {
+              background: light-dark(#000, #FFF);
+              color: light-dark(#FFF, #000);
+              &::after {
+                content: "−";
+                color: light-dark(#FFF, #000);
+              }
+            }
+            &:has(input:focus-visible) {
+              outline: 2px solid var(--theme);
+            }
+            box-shadow: inset 0px 0px 1.2px 0px light-dark(#FFF, #000);
+            padding: 10px;
+            cursor: pointer;
+            background: light-dark(#EEE, #000);
+
+            input {
+              opacity: 0;
+              position: absolute;
+              pointer-events: none;
+            }
+        }
+        #startBtn {
+            border: none;
+            border-radius: 32px;
+            padding: 12px;
+            background: var(--theme);
+            color: #FFF;
+            font: inherit;
+            cursor: pointer;
+            &[disabled] {
+                background: #557;
+                cursor: not-allowed;
+            }
+        }
+        #categorySearch {
+            margin: 8px 0;
+            gap: 8px;
+            input {
+                border-radius: 32px;
+                padding: 12px;
+                background: #000;
+                color: #FFF;
+                border: 1px solid #000;
+                font: inherit;
+                &[disabled] {
+                    background: #557;
+                    cursor: not-allowed;
+                }
+            }
+            select:not(:has(option)) {
+                display: none;
+            }
+        }
+        a[href] {
+            color: var(--theme);
+        }
+        .bottomNav {
+            display: flex;
+            justify-content: space-around;
+            position: fixed;
+            bottom: 0;
+            background: var(--bg);
+            border-top: 1px solid var(--border);
+            max-width: 600px;
+            width: 100vw;
+            height: 48px;
+            box-sizing: border-box;
+            padding: 8px 0;
+            padding-bottom: calc(8px + var(--safe-bottom));
+            button {
+                font-size: 0;
+                &.hidden {
+                    display: none;
+                }
+                border: none;
+                background: none;
+                color: var(--fg);
+                cursor: pointer;
+                text-align: left;
+                padding: 0 3px;
+                transition: background 0.2s;
+                border-radius: 64px;
+                &::before {
+                    display: inline-block;
+                    content: attr(data-icon);
+                    font-size: 1rem;
+                    text-align: center;
+                    width: 24px;
+                    height: 24px;
+                }
+                &[data-icon="⚙️"]::before { content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="fill:none;stroke:%23fff;stroke-linecap:round;stroke-linejoin:round;stroke-width:2px"><polyline points="13.44 5.46 14.29 2.71 18.36 2.71 19.25 5.46 21.64 6.74"/><polyline points="21.64 6.74 24.19 5.39 27.07 8.27 25.75 10.85 26.54 13.44"/><polyline points="26.54 13.44 29.29 14.29 29.29 18.36 26.54 19.25 25.26 21.64"/><polyline points="25.26 21.64 26.61 24.19 23.73 27.07 21.15 25.75 18.56 26.54"/><polyline points="18.56 26.54 17.71 29.29 13.64 29.29 12.75 26.54 10.36 25.26"/><polyline points="10.36 25.26 7.81 26.61 4.93 23.73 6.25 21.15 5.46 18.56"/><polyline points="5.46 18.56 2.71 17.71 2.71 13.64 5.46 12.75 6.74 10.36"/><polyline points="6.74 10.36 5.39 7.81 8.27 4.93 10.85 6.25 13.44 5.46"/><polyline points="13.44 5.46 14.29 2.71 18.36 2.71 19.25 5.46 21.64 6.74"/><circle cx="16" cy="16" r="6" /></svg>') / "Settings" }
+                &[data-icon="🙎🏻‍♂️"]::before { content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="fill:none;stroke:%23fff;stroke-linecap:round;stroke-linejoin:round;stroke-width:2px"><circle cx="16" cy="10.34" r="7.14"/><path d="m15.87,28.8h12.77c-.36-5.39-1.18-7.54-4.22-9.98-.28-.23-.69-.23-.97,0-1.08.84-3.9,2.52-7.31,2.52h-.28c-3.41,0-6.24-1.68-7.31-2.52-.29-.22-.69-.22-.97,0-3.04,2.44-3.86,4.59-4.22,9.98h12.77s-.26,0-.26,0Z"/></svg>') / "Profiles" }
+                &[data-icon="📊"]::before { content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" style="fill:none;stroke:%23fff;stroke-linecap:round;stroke-linejoin:round;stroke-width:2px"><rect x="13" y="17.75" width="6" height="12" rx="1" ry="1"/><rect x="22.5" y="3.75" width="6" height="26" rx="1" ry="1"/><rect x="3.5" y="10.75" width="6" height="19" rx="1" ry="1"/></svg>') / "Stats" }
+                &:hover {
+                    background: light-dark(#0002, #FFF2);
+                }
+            }
+            a:has(.logo) {
+                display: none;
+            }
+            @media (width >= 800px) {
+                gap: 12px;
+                border-top: none;
+                bottom: unset;
+                top: 16px;
+                left: calc(50vw - 320px);
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+                width: fit-content;
+                translate: -100% 0;
+                height: 200px;
+                a:has(.logo) {
+                    display: block;
+                }
+                .logo {
+                    margin-left: 4px;
+                    display: block;
+                    image-rendering: pixelated;
+                    width: 32px;
+                }
+                button:not(.hidden) {
+                    padding: 8px;
+                    display: flex;
+                    align-items: center;
+                }
+                button::before {
+                    width: 24px;
+                    height: 24px;
+                    translate: 0 -1px;
+                }
+            }
+            @media (width >= 960px) {
+                left: calc(50vw - 360px);
+                button:not(.hidden) {
+                    padding: 8px 12px 8px 4px;
+                    font-size: 1rem;
+                }
+                button::before {
+                    margin: 0 12px 0 4px;
+                }
+            }
+        }
+        body:has(>#loading)>.bottomNav, body:has(>#startScreen)>.bottomNav {
+            display: none;
+        }
+        #loading {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            translate: -50% -50%;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            &::before {
+                display: block;
+                animation: 1s spin linear infinite;
+                border-radius: 16px;
+                content: "";
+                width:16px;
+                height:16px;
+                border: 2px solid #89A;
+                border-top-color: var(--theme);
+            }
+        }
+        @keyframes spin { to { transform:rotate(360deg) } }
+        radio-picker {
+          display: flex;
+          border-radius: 64px;
+          width:fit-content;
+          overflow: clip;
+          border: 1px solid var(--border);
+          font-size: 1rem;
+          font-weight: 500;
+          color: #FFF;
+          background: #89A;
+          label {
+            &:has(input:checked) {
+              box-shadow: inset 0px 0px 0px 64px #0004;
+            }
+            &:has(input:focus-visible) {
+              outline: 2px solid light-dark(#000,#FFF);
+              outline-offset: -2px;
+            }
+            padding: 8px;
+            &:first-child {
+                padding-left: 10px;
+                border-radius: 64px 0 0 64px;
+            }
+            &:last-child {
+                padding-right: 10px;
+                border-radius: 0 64px 64px 0;
+            }
+            cursor: pointer;
+            background: #0000;
+            &:hover  { background: light-dark(#0006, #FFF6); }
+            &:active { background: light-dark(#0008, #FFF8); }
+          }
+          input {
+            opacity: 0;
+            position: absolute;
+            pointer-events: none;
+          }
+        }
+        .modal {
+            &[open] {
+                display: flex;
+            }
+            flex-direction: column;
+            background: var(--bg);
+            border:none;
+            width: 90%;
+            height:90%;
+            max-width: 600px;
+            color: var(--fg);
+            border-radius: 8px;
+            padding: 32px;
+            box-sizing: border-box;
+            h1,h2,h3,p {
+                margin: 0;
+            }
+            p {
+                text-wrap-style: pretty;
+            }
+            &>label,&>pseudo-label {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                font-size: 1.2rem;
+                font-weight: 600;
+                margin: 24px 0 8px;
+                -webkit-user-select: none;
+                user-select: none;
+            }
+            &>label:has(input[type="checkbox"]) {
+                position: relative;
+                padding-right: 58px;
+                &::before {
+                    position: absolute;
+                    top: 0;
+                    right: 0;
+                    height: 26px;
+                    left: initial;
+                    content: "";
+                    transition: background 0.2s;
+                    background: #89A;
+                    border-radius: 32px;
+                    width: 50px;
+                    cursor:pointer;
+                }
+                &::after {
+                    position: absolute;
+                    top: 2px;
+                    right: 2px;
+                    height: 22px;
+                    content: "";
+                    background: #FFF;
+                    border-radius: 32px;
+                    aspect-ratio: 1/1;
+                    transition: background 0.2s,  translate 0.2s;
+                    translate: calc(100% - 46px) 0;
+                    cursor:pointer;
+                }
+                &:has(input:checked) {
+                    &::before {
+                        background: var(--theme);
+                    }
+                    &::after {
+                        translate: 0 0;
+                    }
+                }
+                &:has(input:focus-visible) {
+                    &::before {
+                        outline: 2px solid light-dark(#000, #FFF);
+                    }
+                }
+                input {
+                    opacity: 0;
+                    position: absolute;
+                    pointer-events: none;
+                }
+            }
+            button.closeButton {
+                background: #0000;
+                color: var(--fg);
+                border: none;
+                cursor: pointer;
+                font-size: 1.2rem;
+                font-weight: normal;
+            }
+            button {
+                font-weight: 500;
+                cursor: pointer;
+                border: none;
+                background: var(--theme);
+                font-size: inherit;
+                font-weight: inherit;
+                color: #FFF;
+                border-radius: 32px;
+                padding: 12px;
+                &.btn-danger {
+                    background: red;
+                    color: #FFF;
+                }
+                &.btn-danger-outline {
+                    background: #0000;
+                    color: var(--fg);
+                    border: 2px solid red;
+                    box-sizing: border-box;
+                }
+                &.btn-outline {
+                    background: #0000;
+                    color: var(--fg);
+                    border: 2px solid var(--theme);
+                    box-sizing: border-box;
+                }
+            }
+            profile-entry {
+                padding: 8px;
+                padding-left: 20px;
+                border-radius: 32px;
+                border: 1px solid var(--border);
+                display:flex;
+                justify-content:space-between;
+                align-items: center;
+                margin-top: 8px;
+                cursor: pointer;
+                background: light-dark(#0000, #FFF0);
+                transition: background 0.1s;
+                button {
+                    cursor: pointer;
+                    background: #F000;
+                    color: red;
+                    font-weight: 600;
+                    border: none;
+                    transition: background 0.1s, color 0.1s;
+                    &:hover, &:active, &:focus {
+                        background: #F00;
+                        color: #FFF;
+                    }
+                }
+                &:hover, &:active, &:focus {
+                    background: light-dark(#0002, #FFF2);
+                }
+                &.current {
+                    font-weight: 600;
+                    border-color: var(--theme);
+                }
+            }
+            #profilesList > button {
+                width:100%;
+                margin-top:8px;
+            }
+        }
+        #statsModal {
+            details {
+                padding: 8px;
+                border-radius: 8px;
+                margin: 4px 0;
+                border: 1px solid var(--border);
+                summary {
+                    cursor: pointer;
+                }
+                .likedPostEntry {
+                    display: block;
+                    margin: 0;
+                    width: fit-content;
+                }
+            }
+        }
+    </style>
+</head>
+<body>
+    <p id="loading">Loading...</p>
+    <nav class="bottomNav">
+        <a href="/"><img src="favicon.ico" class="logo" /></a>
+        <button data-icon="🙎🏻‍♂️" onclick="showProfilesModal()">Profiles</button>
+        <button data-icon="📊" onclick="showStatsModal()">Stats</button>
+        <button data-icon="⚙️" onclick="showSettingsModal()">Settings</button>
+    </nav>
+    <div class="posts"></div>
+    <div id="startScreen" popover=manual>
+        <div><h1>Wikiquiz</h1></div>
+        <p>A pseudo social media feed that algorithmically shows you content from Wikipedia. It learns what you engage with to suggest more similar content.</p>
+        <p style="font-weight: 600;margin:0">Pick some categories to get started (optional)</p>
+        <div id="categoryPickList"></div>
+        <p style="font-weight: 600;margin:0">Or add your own</p>
+        <div id="categorySearch" style="display:flex;flex-direction:column">
+            <input placeholder="Search categories..." disabled />
+            <select size="5">
+            </select>
+        </div>
+        <p style="margin-top:auto">Since the content and images shown is from random Wikipedia articles, you will likely see NSFW content. Please only continue if you're an adult.</p>
+        <button id="startBtn" disabled>I'm an adult, continue</button>
+    </div>
+    <dialog class="modal" id="profilesModal" closedby=any>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Profiles</h2><button class="closeButton" aria-label="Close" onclick=profilesModal.close()>X</button></div>
+        <p id="storeDataWarning">Warning! You have disabled the "Store data" setting in settings, no data will get saved to your profiles until you turn the setting back on.</p>
+        <div id="profilesList"></div>
+    </dialog>
+    <dialog class="modal" id="statsModal" closedby=any>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Statistics</h2><button class="closeButton" aria-label="Close" onclick=statsModal.close()>X</button></div>
+        <p id="generalStats"></p>
+        <details ontoggle=updateTopStats()><summary>Top categories</summary><div id="top100"></div></details>
+        <details ontoggle=updateTopStats()><summary>Bottom categories</summary><div id="bottom100"></div></details>
+        <details ontoggle=updateLikeStats()><summary>Liked posts</summary><div id="likedPosts"></div></details>
+    </dialog>
+    <dialog class="modal" id="settingsModal" closedby=any>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>Settings</h2><button class="closeButton" aria-label="Close" onclick=settingsModal.close()>X</button></div>
+        <label>Store data<input id="setting-storeData" type=checkbox></label>
+        <p>Whether to store your algorithm data locally (the data still never leaves your device). If this is turned off, your feed will start from scratch every time.</p>
+        <label>Open links in English Wikipedia<input id="setting-openMainWiki" type=checkbox></label>
+        <p>Instead of the native language Wikipedia, open links in English Wikipedia.</p>
+        <pseudo-label>Theme
+        <radio-picker aria-label="Theme picker" role="radiogroup">
+            <label><input type="radio" name="theme" id="theme-auto" checked>Auto</label>
+            <label><input type="radio" name="theme" id="theme-light">Light</label>
+            <label><input type="radio" name="theme" id="theme-dark">Dark</label>
+        </radio-picker>
+        </pseudo-label>
+        <div style="flex:1"></div>
+        <button class="btn-outline" onclick=showAboutModal() style="margin-bottom:8px">About Wikiquiz</button>
+        <button class="btn-danger-outline" onclick=resetAlgorithm() style="margin-bottom:8px">Reset the algorithm</button>
+        <button class="btn-danger" onclick=resetEverything()>Delete all data</button>
+    </dialog>
+    <dialog class="modal" id="aboutModal" closedby=any>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h2>About Wikiquiz</h2><button class="closeButton" aria-label="Close" onclick=aboutModal.close()>X</button></div>
+        <p><strong>Wikiquiz</strong> is a pseudo social media feed that algorithmically shows you content from Wikipedia. Based on <a href="https://github.com/rebane2001/xikipedia">Xikipedia</a> by <a href="https://lyra.horse">rebane2001</a>.</p>
+    </dialog>
+<script type="text/javascript">
+    // ── Language from URL path ──────────────────────────────────────────────
+    const LANG = window.location.pathname.split("/").filter(Boolean)[0] || "simple";
+    const API_BASE = `/api/${LANG}`;
+
+    // ── Post queue (fetched from server in batches) ─────────────────────────
+    let postQueue = [];
+    let fetchingPosts = false;
+
+    // ── Title cache for p: pseudo-categories ────────────────────────────────
+    const articleTitleCache = new Map();
+
+    // ── Language config (fetched from server) ───────────────────────────────
+    let langConfig = null;
+    let defaultCategories = [];
+
+    // ── State (kept in localStorage as before) ──────────────────────────────
+    let categoryScores = {};
+    let seenPosts = [];
+    let likedPosts = [];
+    let likesLen = 0;
+    let timeSpentSession = 0;
+    let timeSpentTotal = 0;
+    let profileName = "Default";
+    let lastSpentTime = Date.now();
+    let postsWithoutLike = 0;
+
+    // ── DOM refs ────────────────────────────────────────────────────────────
+    const startBtn = document.getElementById("startBtn");
+    const categoryPickList = document.getElementById("categoryPickList");
+    const categorySearch = document.getElementById("categorySearch");
+    const categorySearchInput = categorySearch.querySelector("input");
+    const categorySearchSelect = categorySearch.querySelector("select");
+    const bottomNav = document.querySelector(".bottomNav");
+    const profilesModal = document.getElementById("profilesModal");
+    const statsModal = document.getElementById("statsModal");
+    const settingsModal = document.getElementById("settingsModal");
+    const aboutModal = document.getElementById("aboutModal");
+    const profilesList = document.getElementById("profilesList");
+    const storeDataWarning = document.getElementById("storeDataWarning");
+
+    // ── Settings ────────────────────────────────────────────────────────────
+    function loadSettings() {
+        const baseSettings = {
+            storeData: true,
+            openMainWiki: false,
+            profile: "default",
+            profiles: ["default"],
+            theme: "theme-auto",
+        };
+        const loadedSettings = JSON.parse(localStorage.getItem(`wikiquiz-settings-${LANG}`) ?? '{}');
+        const computedSettings = Object.assign(baseSettings, loadedSettings);
+        document.querySelector(`#${computedSettings.theme}`).checked = true;
+        document.getElementById("setting-storeData").checked = computedSettings.storeData;
+        document.getElementById("setting-openMainWiki").checked = computedSettings.openMainWiki;
+        return computedSettings;
+    }
+
+    function saveSettings() {
+        settings.theme = document.querySelector('[name=theme]:checked')?.id ?? "theme-auto";
+        settings.storeData = document.getElementById("setting-storeData").checked;
+        settings.openMainWiki = document.getElementById("setting-openMainWiki").checked;
+        localStorage.setItem(`wikiquiz-settings-${LANG}`, JSON.stringify(settings));
+    }
+
+    function resetAlgorithm() {
+        if (!confirm(`Reset the algorithm and statistics in profile "${profileName}"?`))
+            return;
+        localStorage.removeItem(`wikiquiz-profile-${LANG}-${settings.profile}`);
+        loadProfile(settings.profile);
+        document.location.reload();
+    }
+
+    function resetEverything() {
+        if (!confirm("Are you sure you want to reset all data and settings?"))
+            return;
+        settings.profiles.forEach(e => deleteProfile(e, true));
+        localStorage.removeItem(`wikiquiz-settings-${LANG}`);
+        document.location.reload();
+    }
+
+    const settings = loadSettings();
+    settingsModal.querySelectorAll("input").forEach(e => e.onchange = saveSettings);
+
+    // ── Category search (server-backed with debounce) ───────────────────────
+    let searchDebounce = null;
+    categorySearchInput.oninput = () => {
+        const searchText = categorySearchInput.value;
+        if (!searchText.length)
+            return categorySearchSelect.innerText = "";
+        clearTimeout(searchDebounce);
+        searchDebounce = setTimeout(async () => {
+            try {
+                const resp = await fetch(`${API_BASE}/categories/search?q=${encodeURIComponent(searchText)}`);
+                const data = await resp.json();
+                categorySearchSelect.innerText = "";
+                (data.categories || []).forEach(e => {
+                    const option = document.createElement("option");
+                    option.innerText = `${e.slice(0,1).toUpperCase()}${e.slice(1)}`;
+                    option.value = e;
+                    categorySearchSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error("Category search failed:", err);
+            }
+        }, 300);
+    };
+
+    categorySearchSelect.oninput = () => {
+        if (!categorySearchSelect.value)
+            return;
+        addPickableCategory(categorySearchSelect.value, true);
+    };
+
+    // ── Profile management ──────────────────────────────────────────────────
+    function initProfile() {
+        if (!settings.storeData)
+            return false;
+        if (!settings.profiles.length)
+            settings.profiles.push("default");
+        if (!settings.profiles.includes(settings.profile))
+            settings.profile = settings.profiles[0];
+        return loadProfile(settings.profile);
+    }
+
+    function loadProfile(profileId) {
+        settings.profile = profileId;
+        const defaultProfile = {
+            profileName: "Default",
+            categoryScores: {},
+            seenPosts: [],
+            likedPosts: [],
+            timeSpentTotal: 0,
+        };
+        const loadedProfile = JSON.parse(localStorage.getItem(`wikiquiz-profile-${LANG}-${profileId}`) ?? "{}");
+        const profile = Object.assign(defaultProfile, loadedProfile);
+        categoryScores = profile.categoryScores;
+        seenPosts = profile.seenPosts;
+        likedPosts = profile.likedPosts;
+        timeSpentTotal = profile.timeSpentTotal;
+        profileName = profile.profileName;
+        window.scrollTo(0, 0);
+        document.querySelector(".posts").innerText = "";
+        postQueue = [];
+        likesLen = likedPosts.length;
+        saveSettings();
+        saveProfile();
+        return !!seenPosts.length;
+    }
+
+    function saveProfile() {
+        if (!settings.storeData)
+            return;
+        const profile = {
+            profileName,
+            categoryScores,
+            seenPosts,
+            likedPosts,
+            timeSpentTotal,
+        };
+        localStorage.setItem(`wikiquiz-profile-${LANG}-${settings.profile}`, JSON.stringify(profile));
+    }
+
+    function addProfile(newProfileName) {
+        const profileId = Math.random().toString(36).slice(2);
+        localStorage.setItem(`wikiquiz-profile-${LANG}-${profileId}`, JSON.stringify({profileName: newProfileName}));
+        settings.profiles.push(profileId);
+        loadProfile(profileId);
+        document.location.reload();
+    }
+
+    function deleteProfile(profileId, skipInit) {
+        localStorage.removeItem(`wikiquiz-profile-${LANG}-${profileId}`);
+        settings.profiles = settings.profiles.filter(e => e != profileId);
+        if (profileId != settings.profile || skipInit)
+            return;
+        initProfile();
+    }
+
+    function showProfilesModal() {
+        profilesModal.showModal();
+        storeDataWarning.style.display = settings.storeData ? "none" : "block";
+        profilesList.innerText = "";
+        settings.profiles.forEach(profileId => {
+            const profileName = JSON.parse(localStorage.getItem(`wikiquiz-profile-${LANG}-${profileId}`) ?? "{}")?.profileName || profileId;
+            const isCurrentProfile = profileId == settings.profile;
+            const profileEntry = document.createElement("profile-entry");
+            const deleteButton = document.createElement("button");
+            profileEntry.innerText = profileName;
+            if (isCurrentProfile)
+                profileEntry.classList.add("current");
+            profileEntry.setAttribute("tabindex", "0");
+            profileEntry.setAttribute("role", "button");
+            const loadThisProfile = e => {
+                settings.profile = profileId;
+                loadProfile(profileId);
+                profilesModal.close();
+                showProfilesModal();
+            };
+            profileEntry.onclick = loadThisProfile;
+            profileEntry.onkeydown = e => (e.keyCode == 13 || e.keyCode == 32) ? loadThisProfile(e) : true;
+            deleteButton.innerText = "Delete";
+            const deleteThisProfile = e => {
+                e.stopPropagation();
+                if (confirm(`Delete profile ${profileName}?`)) {
+                    deleteProfile(profileId);
+                    profilesModal.close();
+                    showProfilesModal();
+                }
+            };
+            deleteButton.onclick = deleteThisProfile;
+            deleteButton.onkeydown = e => (e.keyCode == 13 || e.keyCode == 32) ? deleteThisProfile(e) : true;
+            profileEntry.appendChild(deleteButton);
+            profilesList.appendChild(profileEntry);
+        });
+        const addProfileButton = document.createElement("button");
+        addProfileButton.innerText = "Add profile";
+        addProfileButton.onclick = () => {
+            const profileName = prompt("Profile name");
+            if (profileName && profileName.length) {
+                addProfile(profileName);
+                profilesModal.close();
+                showProfilesModal();
+            }
+        };
+        profilesList.appendChild(addProfileButton);
+    }
+
+    // ── Stats ───────────────────────────────────────────────────────────────
+    function textTime(ms) {
+        const h = Math.floor(ms/1000/3600);
+        const m = Math.floor((ms/1000/60) % 60);
+        const s = Math.floor((ms/1000) % 60);
+        let timeText = `${s} second${s==1?'':'s'}`;
+        if (m || h) timeText = `${m} minute${m==1?'':'s'}`;
+        if (h) timeText = `${h} hour${h==1?'':'s'}, ${m} minute${m==1?'':'s'}`;
+        return timeText;
+    }
+
+    let topStatsStale = false;
+    let likeStatsStale = false;
+
+    function convertCat(cat) {
+        if (cat.startsWith("p:")) {
+            const id = cat.slice(2);
+            return articleTitleCache.get(Number(id)) ?? id;
+        }
+        return cat;
+    }
+
+    function updateTopStats() {
+        if (!topStatsStale) return;
+        topStatsStale = false;
+        const sorted = Object.entries(categoryScores).filter(e => e[1]).sort((a, b) => b[1] - a[1]);
+        const top100 = sorted.slice(0, 100);
+        const bottom100 = sorted.slice(sorted.length-100).reverse();
+        document.getElementById("top100").innerText = top100.map(([k,v]) => `${convertCat(k)}: ${v}`).join("\n");
+        document.getElementById("bottom100").innerText = bottom100.map(([k,v]) => `${convertCat(k)}: ${v}`).join("\n");
+    }
+
+    function updateLikeStats() {
+        if (!likeStatsStale) return;
+        likeStatsStale = false;
+        const likedPostsEl = document.getElementById("likedPosts");
+        likedPostsEl.innerText = "";
+        likedPosts.forEach(postId => {
+            const title = articleTitleCache.get(postId);
+            const link = document.createElement(title ? "a" : "em");
+            link.classList.add("likedPostEntry");
+            if (title) {
+                link.innerText = title;
+                link.href = getArticleLink(title);
+            } else {
+                link.innerText = `Unknown post (id: ${postId})`;
+            }
+            likedPostsEl.appendChild(link);
+        });
+    }
+
+    function showStatsModal() {
+        statsModal.showModal();
+        topStatsStale = true;
+        likeStatsStale = true;
+        document.getElementById("generalStats").innerText = `Posts scrolled (total): ${seenPosts.length}\nPosts scrolled (session): ${seenPosts.length - likesLen}\nTime spent (total): ${textTime(timeSpentTotal)}\nTime spent (session): ${textTime(timeSpentSession)}`;
+        document.querySelectorAll("#statsModal details").forEach(e => e.open = false);
+    }
+
+    function showSettingsModal() {
+        settingsModal.showModal();
+    }
+
+    function showAboutModal() {
+        aboutModal.showModal();
+    }
+
+    // ── Engagement (client-side, same as original) ──────────────────────────
+    function engagePost(post, amount) {
+        // post.allCategories is an array of category name strings + p:{id} pseudo-cats
+        post.allCategories.forEach(e => categoryScores[e] = (categoryScores[e] ?? 0) + amount);
+        return amount;
+    }
+
+    // ── UI helpers ──────────────────────────────────────────────────────────
+    function showPic(imgName) {
+        const fullImg = document.createElement("img");
+        fullImg.src = `https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${imgName.replace(/ /g, '_')}`;
+        fullImg.popover = "auto";
+        fullImg.classList.add("fullImg");
+        document.body.appendChild(fullImg);
+        fullImg.showPopover();
+        fullImg.ontoggle = (e) => e.newState === "open" || fullImg.remove();
+        fullImg.onclick = fullImg.hidePopover();
+    }
+
+    function getArticleLink(articleTitle) {
+        const domain = settings.openMainWiki ? 'en.wikipedia.org' : (langConfig?.wikipediaDomain ?? `${LANG}.wikipedia.org`);
+        return `https://${domain}/wiki/${articleTitle.replace(/ /g, '_')}`;
+    }
+
+    function addPickableCategory(cat, checked) {
+        if (document.querySelector(`.categoryPicker input[data-category="${cat.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`))
+            return;
+        const picker = document.createElement("label");
+        const check = document.createElement("input");
+        check.type = "checkbox";
+        picker.innerText = `${cat.slice(0,1).toUpperCase()}${cat.slice(1)}`;
+        picker.appendChild(check);
+        picker.classList.add("categoryPicker");
+        check.dataset.category = cat;
+        if (checked)
+            check.checked = true;
+        categoryPickList.appendChild(picker);
+    }
+
+    // ── Server-backed feed ──────────────────────────────────────────────────
+    async function fetchPosts() {
+        if (fetchingPosts) return;
+        fetchingPosts = true;
+        try {
+            const resp = await fetch(`${API_BASE}/feed`, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    scores: categoryScores,
+                    seen: seenPosts.slice(-500), // send last 500 seen for penalty
+                    batchSize: 20,
+                }),
+            });
+            const data = await resp.json();
+            for (const post of data.posts) {
+                // Build allCategories: category names + p:{id} + p:{linkTarget} pseudo-cats
+                post.allCategories = [
+                    ...post.categories,
+                    `p:${post.id}`,
+                    ...post.links.map(l => `p:${l}`),
+                ];
+                // Cache title for p: pseudo-cat display
+                articleTitleCache.set(post.id, post.title);
+                postQueue.push(post);
+            }
+        } catch (err) {
+            console.error("Feed fetch failed:", err);
+        }
+        fetchingPosts = false;
+    }
+
+    function createNextPost() {
+        if (postQueue.length === 0) return false;
+
+        const nextPost = postQueue.shift();
+
+        // Track seen + time
+        seenPosts.push(nextPost.id);
+        const timeSpent = Math.min(10000, Date.now() - lastSpentTime);
+        lastSpentTime = Date.now();
+        timeSpentTotal += timeSpent;
+        timeSpentSession += timeSpent;
+
+        const postDiv = document.createElement("article");
+        const postTitle = document.createElement("h1");
+        const postP = document.createElement("p");
+        const postYes = document.createElement("button");
+        postDiv.classList.add("post");
+        postDiv.onclick = () => {
+            window.open(getArticleLink(nextPost.title));
+            if (!postDiv.dataset.engaged)
+                postDiv.dataset.engaged = engagePost(nextPost, 75);
+        };
+        postTitle.innerText = nextPost.title;
+        postP.innerText = nextPost.excerpt;
+        postYes.innerText = "Like";
+        postYes.onclick = (e) => {
+            if (!postYes.dataset.liked) {
+                postYes.dataset.liked = true;
+                likedPosts.push(nextPost.id);
+            }
+            if (!postYes.dataset.engaged)
+                postYes.dataset.engaged = engagePost(nextPost, 50 + postsWithoutLike*4);
+            postsWithoutLike = 0;
+            setTimeout(saveProfile, 100);
+            e.stopPropagation();
+        };
+        postDiv.appendChild(postTitle);
+        postDiv.appendChild(postP);
+        if (nextPost.thumb) {
+            const postImg = document.createElement("img");
+            postImg.src = `https://commons.wikimedia.org/w/index.php?title=Special:Redirect/file/${nextPost.thumb.replace(/ /g, '_')}&width=512`;
+            postImg.classList.add("media");
+            postImg.loading = "eager";
+            postImg.onerror = () => postImg.remove();
+            postImg.onclick = (e) => {
+                showPic(nextPost.thumb);
+                if (!postImg.dataset.engaged)
+                    postImg.dataset.engaged = engagePost(nextPost, 100);
+                e.stopPropagation();
+            };
+            postDiv.appendChild(postImg);
+        }
+        postDiv.appendChild(postYes);
+        engagePost(nextPost, -5);
+        postsWithoutLike++;
+        document.querySelector(".posts").appendChild(postDiv);
+        return true;
+    }
+
+    async function render() {
+        if (document.documentElement.scrollHeight < scrollY + innerHeight + 1500) {
+            // Try to render from queue
+            if (!createNextPost()) {
+                // Queue empty — fetch more
+                await fetchPosts();
+                createNextPost();
+            }
+            // Prefetch when queue is running low
+            if (postQueue.length < 5) {
+                fetchPosts();
+            }
+        }
+        requestAnimationFrame(render);
+    }
+
+    // ── Main ────────────────────────────────────────────────────────────────
+    async function main() {
+        const loading = document.querySelector("#loading");
+
+        // Fetch language config
+        try {
+            const resp = await fetch("/api/languages");
+            const data = await resp.json();
+            langConfig = data.languages.find(l => l.code === LANG);
+            if (langConfig) {
+                defaultCategories = langConfig.defaultCategories || [];
+            }
+        } catch (err) {
+            console.error("Failed to fetch languages:", err);
+        }
+
+        const hasProfile = initProfile();
+        if (hasProfile)
+            startScreen.style.display = "none";
+        else
+            startScreen.showPopover();
+
+        bottomNav.inert = true;
+
+        // Add default category pickers
+        defaultCategories.forEach(e => addPickableCategory(e));
+
+        // Fetch popular categories for search suggestions
+        try {
+            const resp = await fetch(`${API_BASE}/categories/popular`);
+            const data = await resp.json();
+            // Add some popular categories as pickable (beyond defaults)
+            (data.categories || []).slice(0, 20).forEach(cat => {
+                if (!defaultCategories.includes(cat))
+                    addPickableCategory(cat);
+            });
+        } catch {}
+
+        // Ready
+        loading.remove();
+        startBtn.removeAttribute("disabled");
+        categorySearchInput.removeAttribute("disabled");
+        startBtn.innerText = "I'm an adult, continue";
+
+        startBtn.onclick = async () => {
+            bottomNav.inert = false;
+            document.querySelectorAll(".categoryPicker>input:checked").forEach(e => {
+                categoryScores[e.dataset.category] = defaultCategories.includes(e.dataset.category) ? 1000 : 5000;
+            });
+            startScreen.hidePopover();
+            startScreen.remove();
+            setTimeout(saveProfile, 100);
+            document.querySelector('meta[name="theme-color"]').setAttribute("content", "#15202B");
+
+            // Pre-fetch first batch
+            await fetchPosts();
+            requestAnimationFrame(render);
+        };
+
+        initProfile();
+        if (hasProfile) {
+            bottomNav.inert = false;
+            startScreen.remove();
+            setTimeout(saveProfile, 100);
+            document.querySelector('meta[name="theme-color"]').setAttribute("content", "#15202B");
+            await fetchPosts();
+            requestAnimationFrame(render);
+        }
+    }
+
+    window.onload = main;
+</script>
+</body>
+</html>

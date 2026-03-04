@@ -1,0 +1,14 @@
+{
+  "name": "wikiquiz",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "hono": "^4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1"
+  }
+}
