@@ -37,7 +37,9 @@ export class WikiStore {
   private stmtGetArticle: ReturnType<Database["prepare"]>;
   private stmtGetArticles: ReturnType<Database["prepare"]>;
   private stmtSearchCategories: ReturnType<Database["prepare"]>;
-  private stmtPopularCategories: ReturnType<Database["prepare"]>;
+
+  /** Cached popular categories (computed once at startup — DB is read-only) */
+  private cachedPopularCategories: string[];
 
   constructor(dbPath: string) {
     this.db = new Database(dbPath, { readonly: true });
@@ -89,27 +91,40 @@ export class WikiStore {
     this.stmtSearchCategories = this.db.prepare(
       "SELECT name FROM categories WHERE name LIKE ? LIMIT 50"
     );
-    this.stmtPopularCategories = this.db.prepare(`
-      SELECT c.name, COUNT(*) as cnt
-      FROM article_categories ac
-      JOIN categories c ON c.id = ac.category_id
-      GROUP BY ac.category_id
-      ORDER BY cnt DESC
-      LIMIT ?
-    `);
+
+    // Pre-compute popular categories (expensive GROUP BY, only needs to run once)
+    // Exclude overly broad meta-categories (>100K articles) which aren't useful for discovery
+    console.log("  Computing popular categories...");
+    const totalArticles = this.articleIds.length;
+    const maxCount = totalArticles < 1000 ? totalArticles : Math.min(totalArticles * 0.05, 100000);
+    const popularRows = this.db
+      .query(
+        `SELECT c.name, COUNT(*) as cnt
+         FROM article_categories ac
+         JOIN categories c ON c.id = ac.category_id
+         GROUP BY ac.category_id
+         HAVING cnt < ?
+         ORDER BY cnt DESC
+         LIMIT 200`
+      )
+      .all(maxCount) as { name: string; cnt: number }[];
+    this.cachedPopularCategories = popularRows.map((r) => r.name);
+    console.log(`  Cached ${this.cachedPopularCategories.length} popular categories`);
   }
 
   private loadCategoryArrays() {
     const n = this.articleIds.length;
-    // First pass: count categories per article
+    const stmt = this.db.query(
+      "SELECT article_id, category_id FROM article_categories ORDER BY article_id"
+    );
+
+    // First pass: count categories per article (streaming, no .all())
     const counts = new Int32Array(n);
     let totalCats = 0;
-
-    const allAC = this.db
-      .query("SELECT article_id, category_id FROM article_categories ORDER BY article_id")
-      .all() as { article_id: number; category_id: number }[];
-
-    for (const row of allAC) {
+    for (const row of stmt.iterate() as Iterable<{
+      article_id: number;
+      category_id: number;
+    }>) {
       const idx = this.articleIdToIndex.get(row.article_id);
       if (idx !== undefined) {
         counts[idx]++;
@@ -123,10 +138,13 @@ export class WikiStore {
       this.categoryOffsets[i + 1] = this.categoryOffsets[i] + counts[i];
     }
 
-    // Fill data
+    // Second pass: fill data (streaming again)
     this.categoryData = new Int32Array(totalCats);
-    const pos = new Int32Array(n); // current write position per article
-    for (const row of allAC) {
+    const pos = new Int32Array(n);
+    for (const row of stmt.iterate() as Iterable<{
+      article_id: number;
+      category_id: number;
+    }>) {
       const idx = this.articleIdToIndex.get(row.article_id);
       if (idx !== undefined) {
         const offset = this.categoryOffsets[idx] + pos[idx];
@@ -140,14 +158,17 @@ export class WikiStore {
 
   private loadLinkArrays() {
     const n = this.articleIds.length;
+    const stmt = this.db.query(
+      "SELECT article_id, target_page_id FROM article_links ORDER BY article_id"
+    );
+
+    // First pass: count links per article (streaming)
     const counts = new Int32Array(n);
     let totalLinks = 0;
-
-    const allAL = this.db
-      .query("SELECT article_id, target_page_id FROM article_links ORDER BY article_id")
-      .all() as { article_id: number; target_page_id: number }[];
-
-    for (const row of allAL) {
+    for (const row of stmt.iterate() as Iterable<{
+      article_id: number;
+      target_page_id: number;
+    }>) {
       const idx = this.articleIdToIndex.get(row.article_id);
       if (idx !== undefined) {
         counts[idx]++;
@@ -160,9 +181,13 @@ export class WikiStore {
       this.linkOffsets[i + 1] = this.linkOffsets[i] + counts[i];
     }
 
+    // Second pass: fill data (streaming)
     this.linkData = new Int32Array(totalLinks);
     const pos = new Int32Array(n);
-    for (const row of allAL) {
+    for (const row of stmt.iterate() as Iterable<{
+      article_id: number;
+      target_page_id: number;
+    }>) {
       const idx = this.articleIdToIndex.get(row.article_id);
       if (idx !== undefined) {
         const offset = this.linkOffsets[idx] + pos[idx];
@@ -210,11 +235,7 @@ export class WikiStore {
   }
 
   getPopularCategories(limit: number = 50): string[] {
-    const results = this.stmtPopularCategories.all(limit) as {
-      name: string;
-      cnt: number;
-    }[];
-    return results.map((r) => r.name);
+    return this.cachedPopularCategories.slice(0, limit);
   }
 
   getRandomArticleIds(count: number): Int32Array {

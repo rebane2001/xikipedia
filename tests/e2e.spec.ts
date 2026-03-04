@@ -1,10 +1,18 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Landing page", () => {
-  test("redirects to single language when only one DB exists", async ({ page }) => {
+  test("lists available languages", async ({ page }) => {
     await page.goto("/");
-    // With only simple.db, should redirect to /simple/
-    await expect(page).toHaveURL(/\/simple\//);
+    await page.waitForLoadState("networkidle");
+    // Should either redirect to single language or show language picker
+    const url = new URL(page.url());
+    if (url.pathname === "/") {
+      // Multiple languages — landing page with language links
+      await expect(page.locator("body")).toContainText(/Choose a language|Wikiquiz/);
+    } else {
+      // Single language — redirected to /:lang/
+      expect(url.pathname).toMatch(/\/\w+\//);
+    }
   });
 });
 
@@ -113,6 +121,45 @@ test.describe("Feed", () => {
   });
 });
 
+test.describe("Russian feed", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("/ru/");
+    await page.evaluate(() => {
+      const keys = Object.keys(localStorage).filter(k => k.startsWith("wikiquiz-"));
+      keys.forEach(k => localStorage.removeItem(k));
+    });
+    await page.reload();
+  });
+
+  test("Russian start screen loads with Russian categories", async ({ page }) => {
+    const startScreen = page.locator("#startScreen");
+    await expect(startScreen).toBeVisible();
+    const startBtn = page.locator("#startBtn");
+    await expect(startBtn).toBeEnabled();
+  });
+
+  test("Russian feed shows posts with Russian text", async ({ page }) => {
+    // Wait for start button to be enabled
+    const startBtn = page.locator("#startBtn");
+    await expect(startBtn).toBeEnabled({ timeout: 10000 });
+    await startBtn.click();
+    const post = page.locator(".post").first();
+    await expect(post).toBeVisible({ timeout: 10000 });
+    // Check post has content
+    const title = await post.locator("h1").textContent();
+    expect(title!.length).toBeGreaterThan(0);
+  });
+
+  test("Russian category search returns results", async ({ page }) => {
+    const searchInput = page.locator("#categorySearch input");
+    await expect(searchInput).toBeEnabled();
+    await searchInput.fill("наук");
+    await page.waitForTimeout(500);
+    const options = page.locator("#categorySearch select option");
+    await expect(options.first()).toBeVisible();
+  });
+});
+
 test.describe("API", () => {
   test("POST /api/simple/feed returns posts", async ({ request }) => {
     const resp = await request.post("/api/simple/feed", {
@@ -125,6 +172,18 @@ test.describe("API", () => {
     expect(data.posts[0]).toHaveProperty("title");
     expect(data.posts[0]).toHaveProperty("excerpt");
     expect(data.posts[0]).toHaveProperty("categories");
+  });
+
+  test("POST /api/ru/feed returns Russian posts", async ({ request }) => {
+    const resp = await request.post("/api/ru/feed", {
+      data: { scores: {}, seen: [], batchSize: 5 },
+    });
+    expect(resp.ok()).toBeTruthy();
+    const data = await resp.json();
+    expect(data.posts).toBeDefined();
+    expect(data.posts.length).toBeGreaterThan(0);
+    expect(data.posts[0]).toHaveProperty("title");
+    expect(data.posts[0]).toHaveProperty("excerpt");
   });
 
   test("GET /api/simple/categories/search returns results", async ({ request }) => {
@@ -149,7 +208,8 @@ test.describe("API", () => {
     const data = await resp.json();
     expect(data.languages).toBeDefined();
     expect(data.languages.length).toBeGreaterThan(0);
-    expect(data.languages[0]).toHaveProperty("code");
-    expect(data.languages[0]).toHaveProperty("name");
+    const codes = data.languages.map((l: any) => l.code);
+    expect(codes).toContain("simple");
+    // "ru" only available when ru.db is built
   });
 });
