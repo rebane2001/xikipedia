@@ -19,7 +19,7 @@ self.addEventListener("fetch", (event) => {
         status: 200,
         headers: { "Content-Type": "text/plain" },
       }))());
-  if (!["", "index.html", "app.webmanifest", "favicon.ico", "favicon-48.png", "favicon-256.png", "smoldata.json"].includes(filename))
+  if (!["", "index.html", "app.webmanifest", "favicon.svg", "favicon-48.png", "favicon-256.png", "smoldata.json"].includes(filename))
     return;
   event.respondWith((async () => {
     const request = event.request;

@@ -2,6 +2,11 @@
   "short_name": "Xiki",
   "name": "Xikipedia",
   "start_url": "/",
+  "theme_color": "#2cafff",
+  "background_color": "#FFF",
+  "color_scheme_dark": {
+    "background_color": "#15202B"
+  },
   "icons": [
     {
       "src": "favicon-48.png",
@@ -12,6 +17,11 @@
       "src": "favicon-256.png",
       "sizes": "256x256",
       "type": "image/png"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
     }
   ],
   "display": "standalone"
