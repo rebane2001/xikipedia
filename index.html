@@ -551,10 +551,116 @@
                 }
             }
         }
+        :root { --pw: 0px; }
+        .article-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 40vw;
+            overflow: hidden;
+            height: 100%;
+            background: var(--bg);
+            border-left: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            translate: 100% 0;
+            transition: translate 0.3s cubic-bezier(.4,0,.2,1), box-shadow 0.3s;
+            &.open {
+                translate: 0 0;
+                box-shadow: -4px 0 24px #0004;
+            }
+            &.resizing {
+                transition: none;
+            }
+            &.fullscreen .panel-resize-handle {
+                left: 4px;
+            }
+            .panel-resize-handle {
+                position: absolute;
+                left: -10px;
+                top: 0;
+                width: 24px;
+                height: 100%;
+                cursor: ew-resize;
+                z-index: 10;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                &::after {
+                    content: "";
+                    width: 4px;
+                    height: 36px;
+                    border-radius: 4px;
+                    background: var(--border);
+                    transition: background 0.15s, height 0.15s, width 0.15s;
+                    pointer-events: none;
+                }
+                &:hover::after {
+                    background: var(--theme);
+                    height: 56px;
+                    width: 5px;
+                }
+            }
+            .panel-drag-overlay {
+                position: absolute;
+                inset: 0;
+                z-index: 9;
+                display: none;
+            }
+            &.resizing .panel-drag-overlay {
+                display: block;
+            }
+            .panel-header {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 12px;
+                border-bottom: 1px solid var(--border);
+                gap: 8px;
+                a {
+                    font-size: 0.85rem;
+                    flex: 1;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+            }
+            iframe {
+                flex: 1;
+                border: none;
+                width: 100%;
+                background: #fff;
+            }
+        }
+        @media (width >= 800px) {
+            body:has(.article-panel.open) .posts {
+                margin-right: var(--pw);
+                transition: margin-right 0.3s cubic-bezier(.4,0,.2,1);
+            }
+            body:has(.article-panel.open) .bottomNav {
+                left: calc(50vw - 320px - var(--pw) / 2);
+                transition: left 0.3s cubic-bezier(.4,0,.2,1);
+            }
+        }
+        @media (width >= 960px) {
+            body:has(.article-panel.open) .bottomNav {
+                left: calc(50vw - 360px - var(--pw) / 2);
+            }
+        }
     </style>
 </head>
 <body>
     <p id="loading">Loading...</p>
+    <aside class="article-panel" id="articlePanel">
+        <div class="panel-resize-handle" id="panelResizeHandle"></div>
+        <div class="panel-drag-overlay" id="panelDragOverlay"></div>
+        <div class="panel-header">
+            <button class="closeButton" aria-label="Close panel" onclick="closeArticlePanel()">X</button>
+            <a id="articlePanelLink" href="#" target="_blank"></a>
+        </div>
+        <iframe id="articlePanelFrame" title="Article"></iframe>
+    </aside>
     <nav class="bottomNav">
         <a href="https://xikipedia.org"><img src="/favicon.ico" class="logo" /></a>
         <button data-icon="🙎🏻‍♂️" onclick="showProfilesModal()">Profiles</button>
@@ -598,6 +704,8 @@
         <p>Whether to store your algorithm data locally (the data still never leaves your device). If this is turned off, your feed will start from scratch every time.</p>
         <label>Open links in English Wikipedia<input id="setting-openMainWiki" type=checkbox></label>
         <p>The articles are pulled from Simple English Wikipedia, but you can choose to still open them in (non-Simple) English Wikipedia.</p>
+<label>Open articles in side panel<input id="setting-sidePanel" type=checkbox></label>
+        <p>Open Wikipedia articles in a side panel instead of a new tab.</p>
         <pseudo-label>Theme
         <radio-picker aria-label="Theme picker" role="radiogroup">
             <label><input type="radio" name="theme" id="theme-auto" checked>Auto</label>
@@ -693,6 +801,7 @@
         const baseSettings = {
             storeData: true,
             openMainWiki: true,
+            sidePanel: true,
             dataSize: 228005406,
             profile: "default",
             profiles: ["default"],
@@ -703,6 +812,7 @@
         document.querySelector(`#${computedSettings.theme}`).checked = true;
         document.getElementById("setting-storeData").checked = computedSettings.storeData;
         document.getElementById("setting-openMainWiki").checked = computedSettings.openMainWiki;
+        document.getElementById("setting-sidePanel").checked = computedSettings.sidePanel;
         return computedSettings;
     }
 
@@ -710,6 +820,7 @@
         settings.theme = document.querySelector('[name=theme]:checked')?.id ?? "theme-auto";
         settings.storeData = document.getElementById("setting-storeData").checked;
         settings.openMainWiki = document.getElementById("setting-openMainWiki").checked;
+        settings.sidePanel = document.getElementById("setting-sidePanel").checked;
         localStorage.setItem("xikipedia-settings", JSON.stringify(settings));
     }
 
@@ -1023,7 +1134,169 @@
         return `https://${settings.openMainWiki ? 'en' : 'simple'}.wikipedia.org/wiki/${articleTitle.replace(/ /g, '_')}`;
     }
 
-    function createNextPost() {
+    let lastArticleUrl = null;
+
+    function openArticle(url) {
+        if (settings.sidePanel) {
+            const panel = document.getElementById("articlePanel");
+            const frame = document.getElementById("articlePanelFrame");
+            const link = document.getElementById("articlePanelLink");
+            link.href = url;
+            link.textContent = url.replace(/^https?:\/\//, "");
+            frame.src = url;
+            if (!panel.classList.contains("open")) {
+                panel.style.width = Math.round(window.innerWidth * 0.4) + "px";
+            }
+            panel.classList.add("open");
+            document.documentElement.style.setProperty("--pw", panel.style.width);
+        } else {
+            window.open(url);
+        }
+    }
+
+    function closeArticlePanel() {
+        const panel = document.getElementById("articlePanel");
+        const link = document.getElementById("articlePanelLink");
+        if (link.href && !link.href.endsWith("#")) lastArticleUrl = link.href;
+        panel.classList.remove("open", "fullscreen");
+        document.getElementById("articlePanelFrame").src = "";
+        document.documentElement.style.setProperty("--pw", "0px");
+    }
+
+    function setPanelWidth(px) {
+        const vw = window.innerWidth;
+        const w = Math.max(Math.min(px, vw), vw * 0.15);
+        const panel = document.getElementById("articlePanel");
+        panel.style.width = w + "px";
+        document.documentElement.style.setProperty("--pw", w + "px");
+    }
+
+    (function initPanelResize() {
+        const handle = document.getElementById("panelResizeHandle");
+        const panel = document.getElementById("articlePanel");
+
+        // --- handle drag (resize by grabbing left edge grip) ---
+        let dragging = false;
+        let startX = 0, startWidth = 0, preFullscreenWidth = 0;
+
+        function startHandleDrag(clientX) {
+            dragging = true;
+            startX = clientX;
+            startWidth = panel.offsetWidth;
+            panel.classList.add("resizing");
+            document.body.style.userSelect = "none";
+            document.body.style.cursor = "ew-resize";
+        }
+
+        function moveHandleDrag(clientX) {
+            if (!dragging) return;
+            const vw = window.innerWidth;
+            const newWidth = startWidth + (startX - clientX);
+            applyWidth(newWidth, vw);
+        }
+
+        function endHandleDrag() {
+            if (!dragging) return;
+            dragging = false;
+            panel.classList.remove("resizing");
+            document.body.style.userSelect = "";
+            document.body.style.cursor = "";
+            snapOnRelease();
+        }
+
+        handle.addEventListener("mousedown", e => { startHandleDrag(e.clientX); e.preventDefault(); });
+        document.addEventListener("mousemove", e => { if (dragging) moveHandleDrag(e.clientX); });
+        document.addEventListener("mouseup", () => { if (dragging) endHandleDrag(); });
+        handle.addEventListener("touchstart", e => { startHandleDrag(e.touches[0].clientX); e.preventDefault(); }, { passive: false });
+        document.addEventListener("touchmove", e => { if (dragging) { moveHandleDrag(e.touches[0].clientX); e.preventDefault(); } }, { passive: false });
+        document.addEventListener("touchend", () => { if (dragging) endHandleDrag(); });
+
+        // --- shared width applier (no snapping — just follow cursor) ---
+        function applyWidth(newWidth, vw) {
+            const w = Math.max(0, Math.min(newWidth, vw));
+            panel.style.width = w + "px";
+            document.documentElement.style.setProperty("--pw", w + "px");
+        }
+
+        // --- snap on release ---
+        function snapOnRelease() {
+            const vw = window.innerWidth;
+            const w = panel.offsetWidth;
+            if (w < vw * 0.15) {
+                closeArticlePanel();
+            } else if (w > vw * 0.9) {
+                preFullscreenWidth = preFullscreenWidth || Math.round(vw * 0.4);
+                panel.style.width = vw + "px";
+                document.documentElement.style.setProperty("--pw", vw + "px");
+                panel.classList.add("fullscreen");
+            } else {
+                panel.classList.remove("fullscreen");
+            }
+        }
+
+        // --- edge drag: right-edge-of-screen (closed→open) + left-edge-of-screen (fullscreen→restore) ---
+        let edgeDragging = false;
+        let edgeType = null;
+        let edgeStartY = 0;
+
+        function startEdgeDrag(clientX, clientY, type) {
+            edgeDragging = true;
+            edgeType = type;
+            edgeStartY = clientY;
+            panel.classList.add("resizing");
+            document.body.style.userSelect = "none";
+            document.body.style.cursor = "ew-resize";
+            if (type === "open" && lastArticleUrl) {
+                const frame = document.getElementById("articlePanelFrame");
+                const link = document.getElementById("articlePanelLink");
+                link.href = lastArticleUrl;
+                link.textContent = lastArticleUrl.replace(/^https?:\/\//, "");
+                frame.src = lastArticleUrl;
+                panel.style.width = "1px";
+                panel.classList.add("open");
+                document.documentElement.style.setProperty("--pw", "0px");
+            }
+        }
+
+        function moveEdgeDrag(clientX, clientY) {
+            if (!edgeDragging) return;
+            if (Math.abs(clientY - edgeStartY) > 50) { endEdgeDrag(); return; }
+            applyWidth(window.innerWidth - clientX, window.innerWidth);
+        }
+
+        function endEdgeDrag() {
+            if (!edgeDragging) return;
+            edgeDragging = false;
+            panel.classList.remove("resizing");
+            document.body.style.userSelect = "";
+            document.body.style.cursor = "";
+            snapOnRelease();
+        }
+
+        function onPointerDown(clientX, clientY) {
+            const vw = window.innerWidth;
+            const isOpen = panel.classList.contains("open");
+            const isFullscreen = isOpen && panel.offsetWidth >= vw * 0.95;
+            if (!isOpen && clientX > vw - 24 && lastArticleUrl) {
+                startEdgeDrag(clientX, clientY, "open");
+            } else if (isFullscreen && clientX < 24) {
+                startEdgeDrag(clientX, clientY, "restore");
+            }
+        }
+
+        document.addEventListener("mousedown", e => onPointerDown(e.clientX, e.clientY));
+        document.addEventListener("mousemove", e => { if (edgeDragging) moveEdgeDrag(e.clientX, e.clientY); });
+        document.addEventListener("mouseup", () => { if (edgeDragging) endEdgeDrag(); });
+        document.addEventListener("touchstart", e => {
+            onPointerDown(e.touches[0].clientX, e.touches[0].clientY);
+        }, { passive: true });
+        document.addEventListener("touchmove", e => {
+            if (edgeDragging) { moveEdgeDrag(e.touches[0].clientX, e.touches[0].clientY); e.preventDefault(); }
+        }, { passive: false });
+        document.addEventListener("touchend", () => { if (edgeDragging) endEdgeDrag(); });
+    })();
+
+function createNextPost() {
         const nextPost = getNextPost();
         const postDiv = document.createElement("article");
         const postTitle = document.createElement("h1");
@@ -1031,7 +1304,7 @@
         const postYes = document.createElement("button");
         postDiv.classList.add("post");
         postDiv.onclick = () => {
-            window.open(getArticleLink(nextPost.title));
+            openArticle(getArticleLink(nextPost.title));
             if (!postDiv.dataset.engaged)
                 postDiv.dataset.engaged = engagePost(nextPost, 75);
         };
@@ -1073,14 +1346,13 @@
     }
 
     function getNextPost() {
-        const potentialPosts = [...Array(10000)].map(e=>pagesArr[Math.floor(Math.random()*pagesArr.length)]).map(post => {
+        let potentialPosts = [...Array(10000)].map(e=>pagesArr[Math.floor(Math.random()*pagesArr.length)]).map(post => {
             const initialScore = (post.thumb ? 5 : 0) + (3**(post.seen??0)-1)*-50000;
             const postScore = [...post.allCategories].reduce((sum, cat) => sum + (categoryScores[cat]??0), initialScore);
             // intentionally do this to the original obj instance
             post.score = postScore;
             return post;
         });
-
         let highestScore = -Infinity;
         let bestPost = potentialPosts[0];
 
@@ -1281,6 +1553,9 @@ async function* streamToAsyncIterable(stream) {
 
 
     window.onload = main;
+    document.addEventListener("keydown", e => {
+        if (e.key === "Escape") closeArticlePanel();
+    });
 </script>
 </body>
 </html>
