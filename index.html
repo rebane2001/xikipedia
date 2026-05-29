@@ -816,7 +816,9 @@
                 post.seen = post.seen || 0;
                 post.seen += 1;
             });
-        } catch {}
+        } catch (e) {
+            console.warn("Failed to restore seen posts:", e);
+        }
         window.scrollTo(0, 0);
         document.querySelector(".posts").innerText = "";
         likesLen = likedPosts.length;
