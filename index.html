@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -87,8 +87,7 @@
             }
             button {
                 align-self: end;
-                margin: -4px;
-                margin-top: 4px;
+                margin: 4px -4px -4px;
                 padding: 4px;
                 background: light-dark(#0000, #FFF0);
                 transition: background 0.2s, scale 0.2s cubic-bezier(.15,.67,0,1);
@@ -245,8 +244,8 @@
             width: 100vw;
             height: 48px;
             box-sizing: border-box;
-            padding: 8px 0;
-            padding-bottom: calc(8px + var(--safe-bottom));
+            padding: 8px 0 calc(8px + var(--safe-bottom));
+
             button {
                 font-size: 0;
                 &.hidden {
@@ -499,8 +498,7 @@
                 }
             }
             profile-entry {
-                padding: 8px;
-                padding-left: 20px;
+                padding: 8px 8px 8px 20px;
                 border-radius: 32px;
                 border: 1px solid var(--border);
                 display:flex;
@@ -520,6 +518,13 @@
                     &:hover, &:active, &:focus {
                         background: #F00;
                         color: #FFF;
+                    }
+                }
+                button.btn-rename {
+                    color: var(--fg);
+                    &:hover, &:active, &:focus {
+                        background: light-dark(#0002, #FFF2);
+                        color: var(--fg);
                     }
                 }
                 &:hover, &:active, &:focus {
@@ -660,7 +665,7 @@
             console.error(`Registration failed with ${err}`);
         });
         navigator.serviceWorker.addEventListener('message', event => {
-            if (event.data.event=="downloadProgress")
+            if (event.data.event==="downloadProgress")
                 updateProgress(event.data.data);
         })
     } else {
@@ -763,7 +768,7 @@
         let results = searchTarget.filter(e => e.startsWith(searchText.toLowerCase())).slice(0,100);
         if (results.length < 100)
             results = [...results, ...searchTarget.filter(e => e.includes(searchText.toLowerCase()) && !results.includes(e)).slice(0,100-results.length)];
-        if (results.length == 100)
+        if (results.length === 100)
             results.push("...");
         categorySearchSelect.innerText = "";
         results.forEach(e => {
@@ -775,7 +780,7 @@
     }
 
     categorySearchSelect.oninput = () => {
-        if (!categorySearchSelect.value || categorySearchSelect.value == "...")
+        if (!categorySearchSelect.value || categorySearchSelect.value === "...")
             return;
         addPickableCategory(categorySearchSelect.value, true);
     }
@@ -812,7 +817,7 @@
         pagesArr.filter(e=>e.seen).forEach(e=>e.seen=0);
         try {
             seenPosts.forEach(postId => {
-                const post = pagesArr.find(e=>e.id==postId);
+                const post = pagesArr.find(e=>e.id===postId);
                 post.seen = post.seen || 0;
                 post.seen += 1;
             });
@@ -850,8 +855,8 @@
 
     function deleteProfile(profileId, skipInit) {
         localStorage.removeItem(`xikipedia-profile-${profileId}`);
-        settings.profiles = settings.profiles.filter(e => e != profileId);
-        if (profileId != settings.profile || skipInit)
+        settings.profiles = settings.profiles.filter(e => e !== profileId);
+        if (profileId !== settings.profile || skipInit)
             return;
         initProfile();
     }
@@ -861,11 +866,12 @@
         storeDataWarning.style.display = settings.storeData ? "none" : "block";
         profilesList.innerText = "";
         settings.profiles.forEach(profileId => {
-            const profileName = JSON.parse(localStorage.getItem(`xikipedia-profile-${profileId}`) ?? "{}")?.profileName || profileId;
-            const isCurrentProfile = profileId == settings.profile;
+            // const profileName = JSON.parse(localStorage.getItem(`xikipedia-profile-${profileId}`) ?? "{}")?.profileName || profileId;
+            const displayName = JSON.parse(localStorage.getItem(`xikipedia-profile-${profileId}`) ?? "{}")?.profileName || profileId;
+            const isCurrentProfile = profileId === settings.profile;
             const profileEntry = document.createElement("profile-entry");
             const deleteButton = document.createElement("button");
-            profileEntry.innerText = profileName;
+            profileEntry.innerText = displayName;
             if (isCurrentProfile)
                 profileEntry.classList.add("current");
             profileEntry.setAttribute("tabindex", "0");
@@ -877,11 +883,30 @@
                 showProfilesModal();
             };
             profileEntry.onclick = loadThisProfile;
-            profileEntry.onkeydown = e => (e.keyCode == 13 || e.keyCode == 32) ? loadThisProfile(e) : true;
+            profileEntry.onkeydown = e => (e.key === 'Enter' || e.key === ' ') ? loadThisProfile(e) : true;
             deleteButton.innerText = "Delete";
+            const renameButton = document.createElement("button");
+            renameButton.innerText = "Rename";
+            renameButton.classList.add("btn-rename");
+            const renameThisProfile = e => {
+                e.stopPropagation();
+                const newName = prompt("New profile name", displayName);
+                if (newName && newName.length) {
+                    const profileData = JSON.parse(localStorage.getItem(`xikipedia-profile-${profileId}`) ?? "{}");
+                    profileData.profileName = newName;
+                    localStorage.setItem(`xikipedia-profile-${profileId}`, JSON.stringify(profileData));
+                    if (profileId === settings.profile)
+                        profileName = newName;
+                    profilesModal.close();
+                    showProfilesModal();
+                }
+            };
+            renameButton.onclick = renameThisProfile;
+            renameButton.onkeydown = e => (e.key === 'Enter' || e.key === ' ') ? renameThisProfile(e) : true;
+            profileEntry.appendChild(renameButton);
             const deleteThisProfile = e => {
                 e.stopPropagation();
-                if (confirm(`Delete profile ${profileName}?`)) {
+                if (confirm(`Delete profile ${displayName}?`)) {
                     deleteProfile(profileId);
                     // profileEntry.remove();
                     profilesModal.close();
@@ -889,16 +914,16 @@
                 }
             };
             deleteButton.onclick = deleteThisProfile;
-            deleteButton.onkeydown = e => (e.keyCode == 13 || e.keyCode == 32) ? deleteThisProfile(e) : true;
+            deleteButton.onkeydown = e => (e.key === 'Enter' || e.key === ' ') ? deleteThisProfile(e) : true;
             profileEntry.appendChild(deleteButton);
             profilesList.appendChild(profileEntry);
         });
         const addProfileButton = document.createElement("button");
         addProfileButton.innerText = "Add profile";
         addProfileButton.onclick = () => {
-            const profileName = prompt("Profile name");
-            if (profileName && profileName.length) {
-                addProfile(profileName);
+            const newProfileName = prompt("Profile name");
+            if (newProfileName && newProfileName.length) {
+                addProfile(newProfileName);
                 profilesModal.close();
                 showProfilesModal();
             }
@@ -910,12 +935,12 @@
         const h = Math.floor(ms/1000/3600);
         const m = Math.floor((ms/1000/60) % 60);
         const s = Math.floor((ms/1000) % 60);
-        let timeText = `${s} second${s==1?'':'s'}`;
+        let timeText = `${s} second${s===1?'':'s'}`;
         if (m || h) {
-            timeText = `${m} minute${m==1?'':'s'}`;
+            timeText = `${m} minute${m===1?'':'s'}`;
         }
         if (h) {
-            timeText = `${h} hour${h==1?'':'s'}, ${m} minute${m==1?'':'s'}`;
+            timeText = `${h} hour${h===1?'':'s'}, ${m} minute${m===1?'':'s'}`;
         }
         return timeText;
     }
@@ -941,7 +966,7 @@
         const likedPostsEl = document.getElementById("likedPosts");
         likedPostsEl.innerText = "";
         likedPosts.forEach(postId => {
-            const post = pagesArr.find(e=>e.id==postId);
+            const post = pagesArr.find(e=>e.id===postId);
             const link = document.createElement(post ? "a" : "em");
             link.classList.add("likedPostEntry");
             if (post) {
@@ -983,7 +1008,7 @@
                 recursiveCache.set(cat, -1);
                 cacheValue = recursiveCategories(subCategories, subs, depth + 1);
                 recursiveCache.set(cat, cacheValue);
-            } else if (cacheValue == -1) {
+            } else if (cacheValue === -1) {
                 recursiveCache.set(cat, []);
                 cacheValue = recursiveCategories(subCategories, subs, depth + 1);
                 recursiveCache.set(cat, cacheValue);
@@ -997,7 +1022,7 @@
     function convertCat(cat) {
         if (cat.startsWith("p:")) {
             cat = cat.slice(2);
-            return pagesArr.find(e=>e.id == cat)?.title ?? noPageMaps[cat] ?? cat;
+            return pagesArr.find(e=>e.id === cat)?.title ?? noPageMaps[cat] ?? cat;
         }
         return cat;
     }
@@ -1015,7 +1040,7 @@
         document.body.appendChild(fullImg);
         fullImg.showPopover();
         fullImg.ontoggle = (e) => e.newState === "open" || fullImg.remove();
-        fullImg.onclick = fullImg.hidePopover();
+        fullImg.onclick = () => fullImg.hidePopover();
     }
 
     function getArticleLink(articleTitle) {
@@ -1039,7 +1064,7 @@
         postYes.innerText = "Like";
         postYes.onclick = (e) => {
             if (!postYes.dataset.liked) {
-                postYes.dataset.liked = true;
+                postYes.dataset.liked = "true";
                 likedPosts.push(nextPost.id);                    
             }
             if (!postYes.dataset.engaged)
@@ -1171,7 +1196,7 @@
     async function checkVersionAsync() {
         try {
             const versionInfo = await (await fetch("version.json", {cache: "no-store"})).json();
-            if (versionInfo.html != HTML_VERSION) {
+            if (versionInfo.html !== HTML_VERSION) {
                 if (window.swReg) {
                     const res = await (await fetch("/clearHtml")).text();
                     console.log(res);
@@ -1181,12 +1206,12 @@
             }
             if (window.swReg) {
                 const swVer = await (await fetch("/swVer")).text();
-                if (versionInfo.sw != swVer) {
+                if (versionInfo.sw !== swVer) {
                     await window.swReg.update();
                     document.location.reload();
                 }
             }
-            if (settings.dataSize != versionInfo.simple) {
+            if (settings.dataSize !== versionInfo.simple) {
                 // todo: handle updating data but only upon user request
             }
         } catch (e) {
@@ -1215,10 +1240,10 @@
         const loading = document.querySelector("#loading");
         loadStatus("waiting 5s for service worker");
         for (let i = 0; i<500; i++) {
-            if (window.swReg && (swReg == "err" || window.swReg?.active)) break;
+            if (window.swReg && (swReg === "err" || window.swReg?.active)) break;
             await new Promise(r => setTimeout(r, 10));
         }
-        checkVersionAsync();
+        await checkVersionAsync();
         loadStatus("loading data");
         const smoldata = await getFileWithProgress(DATA_URL);
         downloadFinished = true;
@@ -1235,7 +1260,7 @@
         while (smoldata.pages.length) {
             const e = smoldata.pages.pop();
             const tempPage = {title:e[0],id:e[1],text:e[2],thumb:e[3],categories:e[4],links:e[5]};
-            if (i % 1000 == 0 && Date.now() - lastFrame > 20) {
+            if (i % 1000 === 0 && Date.now() - lastFrame > 20) {
                 loadStatus(`${(i/wikiLen*100).toFixed(0)}%`);
                 await new Promise(e => requestAnimationFrame(e));
             }
@@ -1255,7 +1280,7 @@
             document.querySelectorAll(".categoryPicker>input:checked").forEach(e => categoryScores[e.dataset.category] = defaultCategories.includes(e.dataset.category) ? 1000 : 5000);
             document.querySelectorAll(".categoryPicker>input:checked").forEach(e => {
                 if (defaultCategories.includes(e.dataset.category)) return;
-                const page = pagesArr.find(x=>x.title.toLowerCase()==e.dataset.category);
+                const page = pagesArr.find(x=>x.title.toLowerCase()===e.dataset.category);
                 if (page)
                     engagePost(page, 100);
             });
