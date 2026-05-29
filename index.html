@@ -714,7 +714,7 @@
     }
 
     function resetAlgorithm() {
-        if (!confirm(`Reset the algorithm in profile "${profileName}"?`))
+        if (!confirm(`Reset the algorithm and statistics in profile "${profileName}"?`))
             return;
         const { timeSpentTotal = 0 } = JSON.parse(localStorage.getItem(`xikipedia-profile-${settings.profile}`) ?? '{}');
         localStorage.removeItem(`xikipedia-profile-${settings.profile}`);
