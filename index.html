@@ -873,8 +873,6 @@
             const loadThisProfile = e => {
                 settings.profile = profileId;
                 loadProfile(profileId);
-                //document.querySelectorAll("profile-entry.current").forEach(x=>x.classList.remove("current"));
-                //profileEntry.classList.add("current");
                 profilesModal.close();
                 showProfilesModal();
             };
@@ -972,7 +970,6 @@
         aboutModal.showModal();
     }
 
-    //const MAX_DEPTH = 10;
     function recursiveCategories(subCategories, categories, depth) {
         const allCategories = new Set(categories);
         categories.forEach(e => {
@@ -1134,18 +1131,18 @@
         categoryPickList.appendChild(picker);
     }
 
-async function* streamToAsyncIterable(stream) {
-  const reader = stream.getReader()
-  try {
-    while (true) {
-      const {done, value} = await reader.read()
-      if (done) return
-      yield value
+    async function* streamToAsyncIterable(stream) {
+      const reader = stream.getReader()
+      try {
+        while (true) {
+          const {done, value} = await reader.read()
+          if (done) return
+          yield value
+        }
+      } finally {
+        reader.releaseLock()
+      }
     }
-  } finally {
-    reader.releaseLock()
-  }
-}
 
     let lastBytesProgress = 0;
     function updateProgress(bytesProgress) {
@@ -1215,6 +1212,7 @@ async function* streamToAsyncIterable(stream) {
             startScreen.showPopover();
         bottomNav.inert = true;
         defaultCategories.forEach(e=>addPickableCategory(e));
+        const loading = document.querySelector("#loading");
         loadStatus("waiting 5s for service worker");
         for (let i = 0; i<500; i++) {
             if (window.swReg && (swReg == "err" || window.swReg?.active)) break;
@@ -1222,8 +1220,6 @@ async function* streamToAsyncIterable(stream) {
         }
         checkVersionAsync();
         loadStatus("loading data");
-        //setTimeout(()=>downloadFinished||loadStatus("this might take a minute on some connections"),5000)
-        //const smoldata = await (await fetch("smoldata.json")).json();
         const smoldata = await getFileWithProgress(DATA_URL);
         downloadFinished = true;
 
@@ -1235,7 +1231,6 @@ async function* streamToAsyncIterable(stream) {
         let i = 0;
         const wikiLen = smoldata.pages.length;
         console.log(wikiLen);
-        const loading = document.querySelector("#loading");
         let lastFrame = Date.now();
         while (smoldata.pages.length) {
             const e = smoldata.pages.pop();
@@ -1245,7 +1240,6 @@ async function* streamToAsyncIterable(stream) {
                 await new Promise(e => requestAnimationFrame(e));
             }
             i++;
-            //tempPage.allCategories = [...recursiveCategories(subCategories, [...tempPage.categories], 0), `p:${tempPage.id}`, ...tempPage.links.map(e=>`p:${e}`)];
             tempPage.allCategories = new Set(recursiveCategories(subCategories, [...tempPage.categories], 0));
             tempPage.allCategories.add(`p:${tempPage.id}`);
             tempPage.allCategories.add(...tempPage.links.map(e=>`p:${e}`));
