@@ -883,7 +883,7 @@
                 showProfilesModal();
             };
             profileEntry.onclick = loadThisProfile;
-            profileEntry.onkeydown = e => (e.key === 'Enter' || e.key === ' ') ? loadThisProfile(e) : true;
+            profileEntry.onkeydown = e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), loadThisProfile(e));
             deleteButton.innerText = "Delete";
             const renameButton = document.createElement("button");
             renameButton.innerText = "Rename";
@@ -902,7 +902,7 @@
                 }
             };
             renameButton.onclick = renameThisProfile;
-            renameButton.onkeydown = e => (e.key === 'Enter' || e.key === ' ') ? renameThisProfile(e) : true;
+            renameButton.onkeydown = e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), renameThisProfile(e));
             profileEntry.appendChild(renameButton);
             const deleteThisProfile = e => {
                 e.stopPropagation();
@@ -914,7 +914,7 @@
                 }
             };
             deleteButton.onclick = deleteThisProfile;
-            deleteButton.onkeydown = e => (e.key === 'Enter' || e.key === ' ') ? deleteThisProfile(e) : true;
+            deleteButton.onkeydown = e => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), deleteThisProfile(e));
             profileEntry.appendChild(deleteButton);
             profilesList.appendChild(profileEntry);
         });
