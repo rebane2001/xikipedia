@@ -1,0 +1,9 @@
+node_modules/
+.expo/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.claude/
+assets/smoldata.json.asset
+assets/xikipedia.db

@@ -3,6 +3,8 @@ Wikipedia as a social media feed
 
 # Try it: [xikipedia.org](https://xikipedia.org/)
 
+[React Native version available in /mobile]
+
 ## About
 
 Xikipedia is a pseudo social media feed that algorithmically shows you content from [Simple Wikipedia](https://simple.wikipedia.org/). It is made as a demonstration of how even a basic non-ML algorithm with no data from other users can quickly learn what you engage with to suggest you more similar content. The algorithm runs locally and no data leaves your device.
