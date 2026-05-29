@@ -716,7 +716,9 @@
     function resetAlgorithm() {
         if (!confirm(`Reset the algorithm and statistics in profile "${profileName}"?`))
             return;
+        const { timeSpentTotal = 0 } = JSON.parse(localStorage.getItem(`xikipedia-profile-${settings.profile}`) ?? '{}');
         localStorage.removeItem(`xikipedia-profile-${settings.profile}`);
+        localStorage.setItem(`xikipedia-profile-${settings.profile}`, JSON.stringify({ timeSpentTotal }));
         loadProfile(settings.profile);
         document.location.reload();
     }
