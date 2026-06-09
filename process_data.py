@@ -23,7 +23,7 @@ def process_page(xml):
     text_toparse = text
     #text_toparse = re.sub('\\[\\[File:[^\\]]+\\]\\]\\n?', '', text_toparse)
     #text_toparse = re.sub('{{Infobox(?:[^{}]+(?:{{(?:[^{}]+(?:{{[^}]+}}|}))+}|}))+}', '', text_toparse, flags=re.MULTILINE)
-    text_toparse = "\n".join(x for x in text_toparse.split("\n") if not x.startswith("thumb|") if not x.upper().startswith("__NOTOC__") and (len(x) == 0 or not x[0] in "{}[]|&<>-*= ")).strip("\n")
+    text_toparse = "\n".join(x for x in text_toparse.split("\n") if not x.startswith("thumb|") if not x.upper().startswith("__NOTOC__") and (len(x) == 0 or not x[0] in "{}[]|!&<>-*= ")).strip("\n")
     text_toparse = re.sub(r'<ref[^>]*>.*?</ref>', '', text_toparse, flags=re.DOTALL)
     text_toparse = "\n".join(text_toparse.split("\n\n")[0].split("\n")[:8])
     #print(f"< {title} >")

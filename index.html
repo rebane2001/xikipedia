@@ -813,8 +813,8 @@
         try {
             seenPosts.forEach(postId => {
                 const post = pagesArr.find(e=>e.id==postId);
-                post.seen = post.seen || 0;
-                post.seen += 1;
+                if (!post) return;
+                post.seen = (post.seen || 0) + 1;
             });
         } catch {}
         window.scrollTo(0, 0);
@@ -1072,6 +1072,16 @@
         document.querySelector(".posts").appendChild(postDiv);
     }
 
+    function cleanPostText(text) {
+        if (!text) return "";
+        // Drop leaked MediaWiki table markup: header rows ("! …") and any cell rows ("| …").
+        return text
+            .split("\n")
+            .filter(line => !/^\s*[!|]/.test(line))
+            .join("\n")
+            .trim();
+    }
+
     function getNextPost() {
         const potentialPosts = [...Array(10000)].map(e=>pagesArr[Math.floor(Math.random()*pagesArr.length)]).map(post => {
             const initialScore = (post.thumb ? 5 : 0) + (3**(post.seen??0)-1)*-50000;
@@ -1237,12 +1247,16 @@ async function* streamToAsyncIterable(stream) {
         let lastFrame = Date.now();
         while (smoldata.pages.length) {
             const e = smoldata.pages.pop();
-            const tempPage = {title:e[0],id:e[1],text:e[2],thumb:e[3],categories:e[4],links:e[5]};
             if (i % 1000 == 0 && Date.now() - lastFrame > 20) {
                 loadStatus(`${(i/wikiLen*100).toFixed(0)}%`);
                 await new Promise(e => requestAnimationFrame(e));
             }
             i++;
+            // Skip posts that are nothing but leaked table markup (e.g. table-only articles).
+            const cleanedText = cleanPostText(e[2]);
+            if (!cleanedText)
+                continue;
+            const tempPage = {title:e[0],id:e[1],text:cleanedText,thumb:e[3],categories:e[4],links:e[5]};
             //tempPage.allCategories = [...recursiveCategories(subCategories, [...tempPage.categories], 0), `p:${tempPage.id}`, ...tempPage.links.map(e=>`p:${e}`)];
             tempPage.allCategories = new Set(recursiveCategories(subCategories, [...tempPage.categories], 0));
             tempPage.allCategories.add(`p:${tempPage.id}`);
